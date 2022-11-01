@@ -13,7 +13,7 @@ start_message = '<b>Добро пожаловать!</b> 👋\n' \
                 '· Подсчет рентабельности\n' \
                 '\n' \
                 '<b>📥 GitHub:</b>\n' \
-                'https://github.com/Raleyph/Microbusiness-Base\n' \
+                'https://github.com/Raleyph/Telegram-Miscrobusiness-Base-Bot\n' \
                 '\n' \
                 'v. 2.0\n' \
                 '<b>© MG Technologies Inc., 2022</b>\n'
