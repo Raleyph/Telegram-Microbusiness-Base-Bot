@@ -87,7 +87,7 @@ async def send_welcome(message: types.Message):
 
             database.user_login(user_id=us_id, user_name=us_name, username=username)
 
-        await message.reply(config.start_message, reply_markup=keyboard.main_keyboard, parse_mode='html')
+        await message.answer(config.start_message, reply_markup=keyboard.main_keyboard, parse_mode='html', disable_web_page_preview=True)
         await StateGroup.menu.set()
 
 
@@ -1085,7 +1085,7 @@ async def get_all_data(message: types.Message, state: FSMContext):
 @dp.message_handler(lambda message: message.text == 'Добавить расход', state=StateGroup.analytics_expense_menu)
 async def add_expense_material(message: types.Message):
     await StateGroup.analytics_expense_price_menu.set()
-    await bot.send_message(message.chat.id, "Введите сумму расходов")
+    await bot.send_message(message.chat.id, "Введите сумму расходов", reply_markup=types.ReplyKeyboardRemove())
 
 
 @dp.message_handler(state=StateGroup.analytics_expense_price_menu)
@@ -1190,19 +1190,15 @@ async def remove_expense(message: types.Message):
         await bot.send_message(message.chat.id, "Выберете расход", reply_markup=keyboard.set_expenses_keyboard(database.get_expenses()))
         await StateGroup.analytics_remove_expense.set()
     else:
-        await bot.send_message(message.chat.id, "Расходы не внесены!", reply_markup=keyboard.main_keyboard)
-        await StateGroup.menu.set()
+        await bot.send_message(message.chat.id, "Расходы не внесены!")
 
 
 @dp.callback_query_handler(state=StateGroup.analytics_remove_expense)
 async def remove_current_expense(call: types.CallbackQuery, state: FSMContext):
-    if database.get_expenses():
-        await state.update_data(expense_id=call.data)
-        expense = database.get_expense_from_id(call.data)
-        await bot.send_message(call.from_user.id, f"Удалить расход от {expense[0][3]}: {expense[0][4] if expense[0][1] == 'Материал' else expense[0][9]}?", reply_markup=keyboard.confirm_keyboard)
-        await StateGroup.analytics_remove_expense_confirm.set()
-    else:
-        await bot.send_message(call.from_user.id, "Расходы не внесены!")
+    await state.update_data(expense_id=call.data)
+    expense = database.get_expense_from_id(call.data)
+    await bot.send_message(call.from_user.id, f"Удалить расход от {expense[0][3]}: {expense[0][4] if expense[0][1] == 'Материал' else expense[0][9]}?", reply_markup=keyboard.confirm_keyboard)
+    await StateGroup.analytics_remove_expense_confirm.set()
 
 
 @dp.callback_query_handler(state=StateGroup.analytics_remove_expense_confirm)
@@ -1223,10 +1219,9 @@ async def remove_expense_material_confirm(call: types.CallbackQuery, state: FSMC
 async def get_expenses_list(message: types.Message):
     if database.get_expenses():
         await bot.send_photo(message.chat.id, await get_expenses_dataframe(), reply_markup=keyboard.main_keyboard)
+        await remove_files()
     else:
         await bot.send_message(message.chat.id, "Расходы не внесены!")
-    await StateGroup.menu.set()
-    await remove_files()
 
 
 # add expenses
@@ -1322,9 +1317,11 @@ async def get_profitability_data(message: types.Message):
 
 # NOTIFICATIONS
 async def send_schedule():
-    user_id = database.get_user_id()[0][0]
-    await bot.send_photo(user_id, await get_data_schedule(7, 6, 'График заработка за неделю'))
-    await bot.send_photo(user_id, await get_data_schedule(7, 9, 'График времени работы за неделю'))
+    users = database.get_user_id()
+
+    for user in users:
+        await bot.send_photo(user[0], await get_data_schedule(7, 6, 'График заработка за неделю'))
+        await bot.send_photo(user[0], await get_data_schedule(7, 9, 'График времени работы за неделю'))
 
 
 async def scheduler():

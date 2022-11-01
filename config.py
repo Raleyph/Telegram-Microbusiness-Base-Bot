@@ -15,7 +15,8 @@ start_message = '<b>Добро пожаловать!</b> 👋\n' \
                 '<b>📥 GitHub:</b>\n' \
                 'https://github.com/Raleyph/Telegram-Miscrobusiness-Base-Bot\n' \
                 '\n' \
-                'v. 2.0\n' \
+                '<b>Версия:</b> 2.1\n' \
+                '\n' \
                 '<b>© MG Technologies Inc., 2022</b>\n'
 
 main_clients = KeyboardButton("Клиенты 🙎‍♀‍")
@@ -51,13 +52,13 @@ expenses_list = KeyboardButton("Список расходов")
 back_button = KeyboardButton("Назад")
 skip_button = KeyboardButton("Пропустить")
 
-client_from_list = InlineKeyboardButton('Клиент из списка', callback_data='client_from_list')
-client_new = InlineKeyboardButton('Новый клиент', callback_data='new_client')
+client_from_list = InlineKeyboardButton('Клиент из списка 📋', callback_data='client_from_list')
+client_new = InlineKeyboardButton('Новый клиент ➕', callback_data='new_client')
 
-confirm_yes = InlineKeyboardButton('Да', callback_data='yes')
-confirm_no = InlineKeyboardButton('Нет', callback_data='no')
+confirm_yes = InlineKeyboardButton('Да ✅', callback_data='yes')
+confirm_no = InlineKeyboardButton('Нет ❌', callback_data='no')
 
-expense_material = InlineKeyboardButton("Материал", callback_data='material')
-expense_salary = InlineKeyboardButton("Зарплата", callback_data='salary')
-expense_transportation = InlineKeyboardButton("Перевозка", callback_data='transportation')
-expense_tax = InlineKeyboardButton("Налог", callback_data='tax')
+expense_material = InlineKeyboardButton("Материал 🧱", callback_data='material')
+expense_salary = InlineKeyboardButton("Зарплата 💳", callback_data='salary')
+expense_transportation = InlineKeyboardButton("Перевозка 🚛", callback_data='transportation')
+expense_tax = InlineKeyboardButton("Налог ⚖", callback_data='tax')
