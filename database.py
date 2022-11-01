@@ -95,21 +95,24 @@ def get_week_finance_sum_data(now_date: str, last_date: str):
 
 def get_csv_records(now_date: str, last_date: str):
 	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE (date BETWEEN ? and ?) AND complete = 1', (now_date, last_date)).fetchall()
-	dataframe = {}
 
-	for value in data:
-		client_data = get_client_from_id(value[3])
-		client_text = f"<b>{client_data[1]}</b> {' - ' + client_data[2] if client_data[2] is not None else ''}"
-		price_text = f"{value[5]} у.е."
-		tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
-		time_text = f"{value[8]} ч"
-		dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
+	if data:
+		dataframe = {}
 
-	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-	db_df[0] = pd.to_datetime(db_df[0], dayfirst=True)
-	db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
-	db_df.to_csv('db/records.csv', index=False)
-	return True
+		for value in data:
+			client_data = get_client_from_id(value[3])
+			client_text = f"<b>{client_data[1]}</b> {' - ' + client_data[2] if client_data[2] is not None else ''}"
+			price_text = f"{value[5]} у.е."
+			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
+			time_text = f"{value[8]} ч"
+			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
+
+		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
+		db_df.to_csv('db/records.csv', index=False)
+		return True
+	else:
+		return False
 
 
 def get_csv_now_records(times: [], week: {}):
@@ -136,19 +139,22 @@ def get_csv_all_records():
 	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE complete = 1').fetchall()
 	dataframe = {}
 
-	for value in data:
-		client_data = get_client_from_id(value[3])
-		client_text = f"{client_data[1]} {' - ' + client_data[2] if client_data[2] is not None else ''}"
-		price_text = f"{value[5]} у.е."
-		tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
-		time_text = f"{value[8]} ч"
-		dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
+	if data:
+		for value in data:
+			client_data = get_client_from_id(value[3])
+			client_text = f"{client_data[1]} {' - ' + client_data[2] if client_data[2] is not None else ''}"
+			price_text = f"{value[5]} у.е."
+			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
+			time_text = f"{value[8]} ч"
+			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
 
-	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-	db_df[0] = pd.to_datetime(db_df[0], dayfirst=True)
-	db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
-	db_df.to_csv('db/all_records.csv', index=False)
-	return True
+		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+		db_df[0] = pd.to_datetime(db_df[0], dayfirst=True)
+		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
+		db_df.to_csv('db/all_records.csv', index=False)
+		return True
+	else:
+		return False
 
 
 def get_csv_clients():

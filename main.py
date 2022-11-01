@@ -478,8 +478,18 @@ async def commit_record(message: types.Message):
     now_records = database.get_now_records()
 
     if now_records:
-        await bot.send_message(message.chat.id, "Выберете запись:", reply_markup=keyboard.set_records_keyboard(database.get_now_records()))
-        await StateGroup.commit_current_record.set()
+        records = []
+
+        for record in now_records:
+            record_date = record[1]
+            if datetime.strptime(record_date, "%Y-%m-%d") < datetime.now():
+                records.append(record)
+
+        if records:
+            await bot.send_message(message.chat.id, "Выберете запись:", reply_markup=keyboard.set_records_keyboard(records))
+            await StateGroup.commit_current_record.set()
+        else:
+            await bot.send_message(message.chat.id, "Записей для завершения нет!", reply_markup=keyboard.main_keyboard)
     else:
         await bot.send_message(message.chat.id, "Записей для завершения нет!", reply_markup=keyboard.main_keyboard)
 
@@ -779,6 +789,8 @@ async def get_records_dataframe(delta_days: int):
         figure.update_layout(autosize=False, margin={'l': 0, 'r': 0, 't': 0, 'b': 0}, width=1280, height=table_height)
         figure.write_image("db/records.png")
         return open("db/records.png", "rb")
+    else:
+        return False
 
 
 async def get_all_records_dataframe():
@@ -790,6 +802,8 @@ async def get_all_records_dataframe():
         dataframe = pd.read_csv("db/all_records.csv")
         dataframe.to_excel("db/all_records.xlsx")
         return True
+    else:
+        return False
 
 
 async def get_clients_dataframe():
@@ -930,15 +944,14 @@ async def get_records_table_height(dataframe):
 
     for index, data in dataframe.iterrows():
         rows.append(index)
-        if len(data[2]) > 33 or len(data[3]) > 30 or len(data[5]) > 30 or len(data[6]) > 30:
+        if len(str(data[2])) > 33 or len(str(data[3])) > 30 or len(str(data[5])) > 30 or len(str(data[6])) > 30:
             double_height += 1
 
     one_rows_count = (len(rows) - double_height)
     one_rows = one_rows_count * 30
-    double_rows = double_height * 1.5 * 30
-    additional = len(rows) + 2
+    double_rows = (double_height * 1.5 * 30) + len(rows) + 2
 
-    return 40 + one_rows + double_rows + additional
+    return 40 + one_rows + double_rows
 
 
 async def get_clients_table_height(dataframe):
@@ -963,7 +976,7 @@ async def get_expenses_table_height(dataframe):
 
     for index, data in dataframe.iterrows():
         rows.append(index)
-        if len(str(data[3])) > 28 or len(data[6]) > 28:
+        if len(str(data[3])) > 28 or len(str(data[6])) > 28:
             double_height += 1
 
     one_rows_count = (len(rows) - double_height)
@@ -1018,7 +1031,7 @@ async def get_week_data(message: types.Message, state: FSMContext):
         elif mode['user_data'] == "Завершенные записи ✅":
             await bot.send_photo(message.chat.id, await get_records_dataframe(7), reply_markup=keyboard.main_keyboard)
     else:
-        await bot.send_message(message.chat.id, "Недостаточно данных!")
+        await bot.send_message(message.chat.id, "Недостаточно данных!", reply_markup=keyboard.main_keyboard)
 
     await StateGroup.menu.set()
     await state.reset_data()
@@ -1038,7 +1051,7 @@ async def get_month_data(message: types.Message, state: FSMContext):
         elif mode['user_data'] == "Завершенные записи ✅":
             await bot.send_photo(message.chat.id, await get_records_dataframe(31), reply_markup=keyboard.main_keyboard)
     else:
-        await bot.send_message(message.chat.id, "Недостаточно данных!")
+        await bot.send_message(message.chat.id, "Недостаточно данных!", reply_markup=keyboard.main_keyboard)
 
     await StateGroup.menu.set()
     await state.reset_data()
@@ -1061,7 +1074,7 @@ async def get_all_data(message: types.Message, state: FSMContext):
             else:
                 await bot.send_message(message.chat.id, "Ошибка конвертации!", reply_markup=keyboard.main_keyboard)
     else:
-        await bot.send_message(message.chat.id, "Недостаточно данных!")
+        await bot.send_message(message.chat.id, "Недостаточно данных!", reply_markup=keyboard.main_keyboard)
 
     await StateGroup.menu.set()
     await state.reset_data()
@@ -1177,7 +1190,8 @@ async def remove_expense(message: types.Message):
         await bot.send_message(message.chat.id, "Выберете расход", reply_markup=keyboard.set_expenses_keyboard(database.get_expenses()))
         await StateGroup.analytics_remove_expense.set()
     else:
-        await bot.send_message(message.chat.id, "Расходы не внесены!")
+        await bot.send_message(message.chat.id, "Расходы не внесены!", reply_markup=keyboard.main_keyboard)
+        await StateGroup.menu.set()
 
 
 @dp.callback_query_handler(state=StateGroup.analytics_remove_expense)

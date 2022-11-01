@@ -13,7 +13,10 @@ start_message = '<b>Добро пожаловать!</b> 👋\n' \
                 '· Подсчет рентабельности\n' \
                 '\n' \
                 '<b>📥 GitHub:</b>\n' \
-                'https://github.com/Raleyph/Microbusiness-Base\n'
+                'https://github.com/Raleyph/Microbusiness-Base\n' \
+                '\n' \
+                'v. 1.0\n' \
+                '<b>© MG Technologies Inc., 2022</b>\n'
 
 main_clients = KeyboardButton("Клиенты 🙎‍♀‍")
 main_records = KeyboardButton("Записи 📃")
