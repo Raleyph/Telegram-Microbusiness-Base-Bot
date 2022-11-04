@@ -1,9 +1,17 @@
 import sqlite3
+import os
 import re
 import pandas as pd
 
 conn = sqlite3.connect('db/data.db', check_same_thread=False)
 cursor = conn.cursor()
+
+
+def check_dirs():
+	if not os.path.exists("db/csv"):
+		os.makedirs("db/csv")
+	if not os.path.exists("db/img"):
+		os.makedirs("db/img")
 
 
 # user
@@ -27,15 +35,14 @@ def get_user_id():
 
 
 # client
+def check_contacts(contacts: str):
+	return False if cursor.execute('SELECT * FROM clients WHERE contacts = ?', (contacts,)).fetchone() else True
+
+
 def add_client(name: str, description: str, contacts: str, return_id: bool):
 	cursor.execute('INSERT INTO clients (name, description, contacts, visits_count) VALUES (?, ?, ?, ?)', (name, description, contacts, 0))
 	conn.commit()
 	return cursor.execute('SELECT last_insert_rowid()').fetchone() if return_id else None
-
-
-def add_client_visits_count(client_id: int):
-	cursor.execute('UPDATE clients SET visits_count = visits_count + 1 WHERE id = ?', (client_id,))
-	conn.commit()
 
 
 def update_client_info(client_id: int, name: str, description: str, contacts: str):
@@ -50,6 +57,11 @@ def get_client_list():
 
 def get_client_from_id(client_id: int):
 	return cursor.execute('SELECT * FROM clients WHERE id = ?', (client_id,)).fetchone()
+
+
+def add_client_visits_count(client_id: int):
+	cursor.execute('UPDATE clients SET visits_count = visits_count + 1 WHERE id = ?', (client_id,))
+	conn.commit()
 
 
 # records
@@ -67,7 +79,7 @@ def remove_record(record_id: int):
 	conn.commit()
 
 
-def get_now_records():
+def get_current_records():
 	data = cursor.execute('SELECT * FROM records WHERE complete = 0').fetchall()
 	return sorted(data, key=lambda date: date[1])
 
@@ -78,7 +90,6 @@ def commit_record(record_id: int, service: str, price: int, tips: str, additiona
 	conn.commit()
 
 
-# analytics
 def get_records_delta_data(now_date: str, last_date: str):
 	return cursor.execute('SELECT * FROM records WHERE (date BETWEEN ? AND ?) AND complete = 1', (now_date, last_date,)).fetchall()
 
@@ -87,102 +98,7 @@ def get_records_all_data():
 	return cursor.execute('SELECT * FROM records WHERE complete = 1').fetchall()
 
 
-def get_week_finance_sum_data(now_date: str, last_date: str):
-	money = cursor.execute('SELECT price FROM records WHERE (date BETWEEN ? and ?) AND complete = 1', (now_date, last_date)).fetchall()
-	tips = cursor.execute('SELECT tips FROM records WHERE (date BETWEEN ? and ?) AND TYPEOF(tips) = "integer" AND complete = 1', (now_date, last_date)).fetchall()
-	return money[0] + tips[0]
-
-
-def get_csv_records(now_date: str, last_date: str):
-	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE (date BETWEEN ? and ?) AND complete = 1', (now_date, last_date)).fetchall()
-
-	if data:
-		dataframe = {}
-
-		for value in data:
-			client_data = get_client_from_id(value[3])
-			client_text = f"<b>{client_data[1]}</b> {' - ' + client_data[2] if client_data[2] is not None else ''}"
-			price_text = f"{value[5]} у.е."
-			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
-			time_text = f"{value[8]} ч"
-			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
-
-		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
-		db_df.to_csv('db/records.csv', index=False)
-		return True
-	else:
-		return False
-
-
-def get_csv_now_records(times: [], week: {}):
-	data = get_now_records()
-	week_data = {'Time': times} | week
-
-	db_df = pd.DataFrame.from_dict(week_data, orient='columns')
-	db_df.set_index('Time', inplace=True, drop=True)
-
-	for value in data:
-		for day in week:
-			for time in times:
-				if week[day] == value[1] and time == value[2]:
-					client_data = get_client_from_id(value[3])
-					db_df.at[time, day] = client_data[1]
-				else:
-					if re.match(r'^202[2-5]-[0-1][0-9]-[0-3][0-9]$', db_df.iloc[times.index(time)][day]):
-						db_df.at[time, day] = " "
-
-	db_df.to_csv('db/now_records.csv', index=True)
-
-
-def get_csv_all_records():
-	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE complete = 1').fetchall()
-	dataframe = {}
-
-	if data:
-		for value in data:
-			client_data = get_client_from_id(value[3])
-			client_text = f"{client_data[1]} {' - ' + client_data[2] if client_data[2] is not None else ''}"
-			price_text = f"{value[5]} у.е."
-			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
-			time_text = f"{value[8]} ч"
-			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
-
-		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-		db_df[0] = pd.to_datetime(db_df[0], dayfirst=True)
-		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
-		db_df.to_csv('db/all_records.csv', index=False)
-		return True
-	else:
-		return False
-
-
-def get_csv_clients():
-	data = cursor.execute('SELECT * FROM clients').fetchall()
-	dataframe = {}
-
-	for value in data:
-		dataframe[value[0]] = [value[1], value[2], value[3], value[4]]
-
-	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-	db_df.to_csv('db/clients.csv', index=False)
-
-
-def get_csv_expenses():
-	data = cursor.execute('SELECT * FROM expenses').fetchall()
-	dataframe = {}
-
-	for value in data:
-		expense_name = value[4] if value[4] is not None else "Нет"
-		expense_count = f"{value[6]} / {value[5]}" if value[5] is not None else "Нет"
-		expense_consumption = value[7] if value[7] is not None else "Нет"
-		expense_description = value[8] if value[8] is not None else "Нет"
-		dataframe[value[0]] = [value[1], value[2], value[3], expense_name, expense_count, expense_consumption, expense_description]
-
-	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
-	db_df.to_csv('db/expenses.csv', index=False)
-
-
+# expenses
 def set_expense_material(expense_type: str, name: str, price: int, date: str, count: float, consumption: float):
 	cursor.execute('INSERT INTO expenses (type, name, price, date, count, new_count, consumption) VALUES (?, ?, ?, ?, ?, ?, ?)', (expense_type, name, price, date, count, count, consumption))
 	conn.commit()
@@ -220,6 +136,7 @@ def update_expenses(new_count: float, expense_id):
 	conn.commit()
 
 
+# general data
 def get_finance_sum():
 	return cursor.execute('SELECT SUM(price) FROM records').fetchone()[0]
 
@@ -235,3 +152,94 @@ def get_profitability_data(last_date: str, now_date: str):
 	all_earning = earnings - expense
 	profitability = round((all_earning / earnings) * 100, 2)
 	return [all_earning, profitability]
+
+
+# csv
+def get_csv_records(now_date: str, last_date: str):
+	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE (date BETWEEN ? and ?) AND complete = 1', (now_date, last_date)).fetchall()
+
+	if data:
+		dataframe = {}
+
+		for value in data:
+			client_data = get_client_from_id(value[3])
+			client_text = f"<b>{client_data[1]}</b> {' - ' + client_data[2] if client_data[2] is not None else ''}"
+			price_text = f"{value[5]} у.е."
+			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
+			time_text = f"{value[8]} ч"
+			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
+
+		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
+		db_df.to_csv('db/csv/records.csv', index=False)
+		return True
+	else:
+		return False
+
+
+def get_csv_current_records(times: [], week: {}):
+	data = get_current_records()
+	week_data = {'Time': times} | week
+
+	db_df = pd.DataFrame.from_dict(week_data, orient='columns')
+	db_df.set_index('Time', inplace=True, drop=True)
+
+	for value in data:
+		for day in week:
+			for time in times:
+				if week[day] == value[1] and time == value[2]:
+					client_data = get_client_from_id(value[3])
+					db_df.at[time, day] = client_data[1]
+				else:
+					if re.match(r'^202[2-5]-[0-1][0-9]-[0-3][0-9]$', db_df.iloc[times.index(time)][day]):
+						db_df.at[time, day] = " "
+
+	db_df.to_csv('db/csv/current_records.csv', index=True)
+
+
+def get_csv_all_records():
+	data = cursor.execute('SELECT id, date, time, client_id, service, price, tips, additional, work_time FROM records WHERE complete = 1').fetchall()
+	dataframe = {}
+
+	if data:
+		for value in data:
+			client_data = get_client_from_id(value[3])
+			client_text = f"{client_data[1]} {' - ' + client_data[2] if client_data[2] is not None else ''}"
+			price_text = f"{value[5]} у.е."
+			tips_text = f"{value[6]} {'у.е.' if type(value[6]) is int else ''}"
+			time_text = f"{value[8]} ч"
+			dataframe[value[0]] = [value[1], value[2], client_text, value[4], price_text, tips_text, value[7], time_text]
+
+		db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+		db_df[0] = pd.to_datetime(db_df[0], dayfirst=True)
+		db_df.sort_values(by=[0, 1], inplace=True, ascending=False)
+		db_df.to_csv('db/csv/all_records.csv', index=False)
+		return True
+	else:
+		return False
+
+
+def get_csv_clients():
+	data = cursor.execute('SELECT * FROM clients').fetchall()
+	dataframe = {}
+
+	for value in data:
+		dataframe[value[0]] = [value[1], value[2], value[3], value[4]]
+
+	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+	db_df.to_csv('db/csv/clients.csv', index=False)
+
+
+def get_csv_expenses():
+	data = cursor.execute('SELECT * FROM expenses').fetchall()
+	dataframe = {}
+
+	for value in data:
+		expense_name = value[4] if value[4] is not None else "Нет"
+		expense_count = f"{value[6]} / {value[5]}" if value[5] is not None else "Нет"
+		expense_consumption = value[7] if value[7] is not None else "Нет"
+		expense_description = value[8] if value[8] is not None else "Нет"
+		dataframe[value[0]] = [value[1], value[2], value[3], expense_name, expense_count, expense_consumption, expense_description]
+
+	db_df = pd.DataFrame.from_dict(dataframe, orient='index')
+	db_df.to_csv('db/csv/expenses.csv', index=False)
